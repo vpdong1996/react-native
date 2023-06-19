@@ -13,6 +13,10 @@ const {exec} = require('shelljs');
 const os = require('os');
 const {spawn} = require('node:child_process');
 
+const util = require('util')
+const asyncRequest = require('request');
+const request = util.promisify(asyncRequest);
+
 /*
  * Android related utils - leverages android tooling
  */
@@ -115,8 +119,106 @@ function launchPackagerInSeparateWindow(folderPath) {
   exec(`osascript -e '${command}'`);
 }
 
+// Artifacts URL is in the shape of:
+// https://app.circleci.com/pipelines/github/facebook/react-native/<pipelineNumber>/workflows/<workflowId>>/jobs/<jobNumber>/artifacts/<artifactName>
+class CircleCIArtifacts {
+  #circleCIHeaders;
+  #jobs;
+  #workflowId;
+  #pipelineNumber;
+
+  constructor(circleCIToken) {
+    this.circleCIToken = {'Circle-Token': circleCIToken};
+  }
+
+  async initialize(branchName) {
+    console.info(`Getting CircleCI infoes`);
+    const pipeline = await this.#getLastCircleCIPipelineID(branchName);
+    const workflow = await this.#getPackageAndReleaseWorkflow(pipeline.id);
+    if (workflow.status !== 'success') {
+      throw new Error(`The Publish and Package Release workflow status is ${workflow.status}. Please, wait for it to be finished before start testing or fix it`);
+    }
+    this.jobs = await this.#getCircleCIJobs(workflow.id);
+  }
+
+  async #getLastCircleCIPipelineID(branchName) {
+    const options = {
+      method: 'GET',
+      url: 'https://circleci.com/api/v2/project/gh/facebook/react-native/pipeline',
+      qs: {
+        'branch': branchName
+      },
+      headers: this.circleCIHeaders
+    };
+
+    const response = await request(options);
+    if (response.error) throw new Error(error);
+
+    const lastPipeline = JSON.parse(response.body).items[0]
+    return { id: lastPipeline.id, number: lastPipeline.number };
+  }
+
+  async #getPackageAndReleaseWorkflow(pipelineId){
+    const options = {
+      method: 'GET',
+      url: `https://circleci.com/api/v2/pipeline/${pipelineId}/workflow`,
+      headers: this.circleCIHeaders
+    };
+    const response = await request(options);
+    if (response.error) throw new Error(error);
+
+    const body = JSON.parse(response.body);
+    return body.items.filter(workflow => workflow.name === 'package_and_publish_release_dryrun')[0];
+  }
+
+  async #getCircleCIJobs(workflowId){
+    const options = {
+      method: 'GET',
+      url: `https://circleci.com/api/v2/workflow/${workflowId}/job`,
+      headers: this.circleCIHeaders
+    };
+    const response = await request(options);
+    if (response.error) throw new Error(error);
+
+    const body = JSON.parse(response.body);
+    return body.items
+  }
+
+  async getJobsArtifacts(jobNumber){
+    const options = {
+      method: 'GET',
+      url: `https://circleci.com/api/v2/project/gh/facebook/react-native/${jobNumber}/artifacts`,
+      headers: this.circleCIHeaders
+    };
+    const response = await request(options);
+    if (response.error) throw new Error(error);
+
+    const body = JSON.parse(response.body);
+    return body.items
+  }
+
+  async #findUrlForJob(jobName, artifactPath) {
+    const job = this.jobs.find(job => job.name === jobName);
+    const artifacts = await this.getJobsArtifacts(job.job_number);
+    return artifacts.find(artifact => artifact.path.indexOf(artifactPath) > -1).url;
+  }
+
+  async artifactURLForMavenLocal() {
+    return this.#findUrlForJob('build_and_publish_npm_package-2', 'maven-local.zip');
+  }
+
+  async artifactURLForPackagedReactNative() {
+    return this.#findUrlForJob('build_and_publish_npm_package-2', 'react-native-1000.0.0-');
+  }
+
+  async artifactURLHermesDebug() {
+    return this.#findUrlForJob('build_hermes_macos-Debug', 'hermes-ios-debug.tar.gz');
+  }
+}
+
 module.exports = {
   maybeLaunchAndroidEmulator,
   isPackagerRunning,
   launchPackagerInSeparateWindow,
+  CircleCIArtifacts,
 };
