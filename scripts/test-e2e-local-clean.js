@@ -44,6 +44,7 @@ if (isPackagerRunning() === 'running') {
 console.info('\n** Cleaning Gradle build artifacts **\n');
 exec('./gradlew clean');
 exec('rm -rf /tmp/maven-local');
+exec('rm -rf /tmp/hermes-ios-debug.tar.gz');
 
 // iOS
 console.info('\n** Nuking the derived data folder **\n');

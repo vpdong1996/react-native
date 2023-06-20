@@ -134,11 +134,24 @@ class CircleCIArtifacts {
   async initialize(branchName) {
     console.info(`Getting CircleCI infoes`);
     const pipeline = await this.#getLastCircleCIPipelineID(branchName);
-    const workflow = await this.#getPackageAndReleaseWorkflow(pipeline.id);
+    const packageAndReleaseWorkflow = await this.#getPackageAndReleaseWorkflow(pipeline.id);
+    this.#throwIfPendingOrUnsuccessfulWorkflow(packageAndReleaseWorkflow);
+    const testsWorkflow = await this.#getTestsWorkflow(pipeline.id);
+    this.#throwIfPendingOrUnsuccessfulWorkflow(testsWorkflow);
+    const jobsPromises = [
+      this.#getCircleCIJobs(packageAndReleaseWorkflow.id),
+      this.#getCircleCIJobs(testsWorkflow.id)
+    ];
+
+    const jobsResults = await Promise.all(jobsPromises);
+
+    this.jobs = jobsResults.flatMap(jobs => jobs);
+  }
+
+  async #throwIfPendingOrUnsuccessfulWorkflow(workflow) {
     if (workflow.status !== 'success') {
-      throw new Error(`The Publish and Package Release workflow status is ${workflow.status}. Please, wait for it to be finished before start testing or fix it`);
+      throw new Error(`The ${workflow.name} workflow status is ${workflow.status}. Please, wait for it to be finished before start testing or fix it`);
     }
-    this.jobs = await this.#getCircleCIJobs(workflow.id);
   }
 
   async #getLastCircleCIPipelineID(branchName) {
@@ -158,7 +171,7 @@ class CircleCIArtifacts {
     return { id: lastPipeline.id, number: lastPipeline.number };
   }
 
-  async #getPackageAndReleaseWorkflow(pipelineId){
+  async #getSpecificWorkflow(pipelineId, workflowName) {
     const options = {
       method: 'GET',
       url: `https://circleci.com/api/v2/pipeline/${pipelineId}/workflow`,
@@ -168,7 +181,15 @@ class CircleCIArtifacts {
     if (response.error) throw new Error(error);
 
     const body = JSON.parse(response.body);
-    return body.items.filter(workflow => workflow.name === 'package_and_publish_release_dryrun')[0];
+    return body.items.find(workflow => workflow.name === workflowName);
+  }
+
+  async #getPackageAndReleaseWorkflow(pipelineId){
+    return this.#getSpecificWorkflow(pipelineId, 'package_and_publish_release_dryrun');
+  }
+
+  async #getTestsWorkflow(pipelineId){
+    return this.#getSpecificWorkflow(pipelineId, 'tests');
   }
 
   async #getCircleCIJobs(workflowId){
@@ -184,7 +205,7 @@ class CircleCIArtifacts {
     return body.items
   }
 
-  async getJobsArtifacts(jobNumber){
+  async #getJobsArtifacts(jobNumber){
     const options = {
       method: 'GET',
       url: `https://circleci.com/api/v2/project/gh/facebook/react-native/${jobNumber}/artifacts`,
@@ -199,8 +220,12 @@ class CircleCIArtifacts {
 
   async #findUrlForJob(jobName, artifactPath) {
     const job = this.jobs.find(job => job.name === jobName);
-    const artifacts = await this.getJobsArtifacts(job.job_number);
+    const artifacts = await this.#getJobsArtifacts(job.job_number);
     return artifacts.find(artifact => artifact.path.indexOf(artifactPath) > -1).url;
+  }
+
+  async artifactURLHermesDebug() {
+    return this.#findUrlForJob('build_hermes_macos-Debug', 'hermes-ios-debug.tar.gz');
   }
 
   async artifactURLForMavenLocal() {
@@ -211,9 +236,19 @@ class CircleCIArtifacts {
     return this.#findUrlForJob('build_and_publish_npm_package-2', 'react-native-1000.0.0-');
   }
 
-  async artifactURLHermesDebug() {
-    return this.#findUrlForJob('build_hermes_macos-Debug', 'hermes-ios-debug.tar.gz');
+  async artifactURLForHermesRNTesterAPK() {
+    return this.#findUrlForJob('test_android', 'rntester-apk/hermes/release/app-hermes-arm64-v8a-release.apk');
   }
+
+  async artifactURLForJSCRNTesterAPK() {
+    return this.#findUrlForJob('test_android', 'rntester-apk/jsc/release/app-jsc-arm64-v8a-release.apk');
+  }
+
+  async downloadArtifact(artifactURL, destination) {
+    exec(`rm -rf ${destination}`);
+    exec(`curl ${artifactURL} -Lo ${destination}`);
+  }
+
 }
 
 module.exports = {

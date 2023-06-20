@@ -100,15 +100,26 @@ async function main () {
         } version of RNTester iOS with the new Architecture enabled`,
       );
 
+
       // remember that for this to be successful
       // you should have run bundle install once
-      // in your local setup - also: if I'm on release branch, I pick the
+      // in your local setup
+      // NOTE: is this still relevant? 👇🏻
+      // also: if I'm on release branch, I pick the
       // hermes ref from the hermes ref file (see hermes-engine.podspec)
-      exec(
-        `USE_HERMES=${
-          argv.hermes ? 1 : 0
-        } CI=${onReleaseBranch} RCT_NEW_ARCH_ENABLED=1 bundle exec pod install --ansi`,
-      );
+      if (argv.hermes) {
+        const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
+        const hermesPath = '/tmp/hermes-ios-debug.tar.gz';
+        // download hermes source code from manifold
+        circleCIArtifacts.downloadArtifact(hermesURL, hermesPath);
+        console.info(`Downloaded Hermes in ${hermesPath}`);
+        exec(`HERMES_ENGINE_TARBALL_PATH=${hermesPath} RCT_NEW_ARCH_ENABLED=1 bundle exec pod install --ansi`)
+      } else {
+        exec(
+          `USE_HERMES=0 CI=${onReleaseBranch} RCT_NEW_ARCH_ENABLED=1 bundle exec pod install --ansi`,
+        );
+      }
+
 
       // if everything succeeded so far, we can launch Metro and the app
       // start the Metro server in a separate window
@@ -126,11 +137,17 @@ async function main () {
           argv.hermes ? 'Hermes' : 'JSC'
         } version of RNTester Android with the new Architecture enabled`,
       );
-      exec(
-        `../../gradlew :packages:rn-tester:android:app:${
-          argv.hermes ? 'installHermesDebug' : 'installJscDebug'
-        } --quiet`,
-      );
+
+      const downloadPath = "/tmp/rntester.apk";
+
+      const rntesterAPKURL = argv.hermes ?
+        await circleCIArtifacts.artifactURLForHermesRNTesterAPK() :
+        await circleCIArtifacts.artifactURLForJSCRNTesterAPK()
+
+      console.info("Start Downloading APK");
+      circleCIArtifacts.downloadArtifact(rntesterAPKURL, downloadPath);
+
+      exec(`adb install ${downloadPath}`)
 
       // launch the app on Android simulator
       // TODO: we should find a way to make it work like for iOS, via npx react-native run-android
