@@ -27,7 +27,6 @@ const {
   CircleCIArtifacts,
 } = require('./testing-utils');
 
-
 const argv = yargs
   .option('t', {
     alias: 'target',

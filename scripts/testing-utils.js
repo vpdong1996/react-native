@@ -169,7 +169,9 @@ class CircleCIArtifacts {
     };
 
     const response = await request(options);
-    if (response.error) { throw new Error(error); }
+    if (response.error) {
+      throw new Error(error);
+    }
 
     const lastPipeline = JSON.parse(response.body).items[0];
     return {id: lastPipeline.id, number: lastPipeline.number};
@@ -182,7 +184,9 @@ class CircleCIArtifacts {
       headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error) { throw new Error(error); }
+    if (response.error) {
+      throw new Error(error);
+    }
 
     const body = JSON.parse(response.body);
     return body.items.find(workflow => workflow.name === workflowName);
@@ -206,7 +210,9 @@ class CircleCIArtifacts {
       headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error){ throw new Error(error); }
+    if (response.error) {
+      throw new Error(error);
+    }
 
     const body = JSON.parse(response.body);
     return body.items;
@@ -219,7 +225,9 @@ class CircleCIArtifacts {
       headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error){ throw new Error(error); }
+    if (response.error) {
+      throw new Error(error);
+    }
 
     const body = JSON.parse(response.body);
     return body.items;
