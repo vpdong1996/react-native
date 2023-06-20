@@ -13,7 +13,7 @@ const {exec} = require('shelljs');
 const os = require('os');
 const {spawn} = require('node:child_process');
 
-const util = require('util')
+const util = require('util');
 const asyncRequest = require('request');
 const request = util.promisify(asyncRequest);
 
@@ -132,15 +132,17 @@ class CircleCIArtifacts {
   }
 
   async initialize(branchName) {
-    console.info(`Getting CircleCI infoes`);
+    console.info('Getting CircleCI infoes');
     const pipeline = await this.#getLastCircleCIPipelineID(branchName);
-    const packageAndReleaseWorkflow = await this.#getPackageAndReleaseWorkflow(pipeline.id);
+    const packageAndReleaseWorkflow = await this.#getPackageAndReleaseWorkflow(
+      pipeline.id,
+    );
     this.#throwIfPendingOrUnsuccessfulWorkflow(packageAndReleaseWorkflow);
     const testsWorkflow = await this.#getTestsWorkflow(pipeline.id);
     this.#throwIfPendingOrUnsuccessfulWorkflow(testsWorkflow);
     const jobsPromises = [
       this.#getCircleCIJobs(packageAndReleaseWorkflow.id),
-      this.#getCircleCIJobs(testsWorkflow.id)
+      this.#getCircleCIJobs(testsWorkflow.id),
     ];
 
     const jobsResults = await Promise.all(jobsPromises);
@@ -150,7 +152,9 @@ class CircleCIArtifacts {
 
   async #throwIfPendingOrUnsuccessfulWorkflow(workflow) {
     if (workflow.status !== 'success') {
-      throw new Error(`The ${workflow.name} workflow status is ${workflow.status}. Please, wait for it to be finished before start testing or fix it`);
+      throw new Error(
+        `The ${workflow.name} workflow status is ${workflow.status}. Please, wait for it to be finished before start testing or fix it`,
+      );
     }
   }
 
@@ -159,96 +163,114 @@ class CircleCIArtifacts {
       method: 'GET',
       url: 'https://circleci.com/api/v2/project/gh/facebook/react-native/pipeline',
       qs: {
-        'branch': branchName
+        branch: branchName,
       },
-      headers: this.circleCIHeaders
+      headers: this.circleCIHeaders,
     };
 
     const response = await request(options);
-    if (response.error) throw new Error(error);
+    if (response.error) { throw new Error(error); }
 
-    const lastPipeline = JSON.parse(response.body).items[0]
-    return { id: lastPipeline.id, number: lastPipeline.number };
+    const lastPipeline = JSON.parse(response.body).items[0];
+    return {id: lastPipeline.id, number: lastPipeline.number};
   }
 
   async #getSpecificWorkflow(pipelineId, workflowName) {
     const options = {
       method: 'GET',
       url: `https://circleci.com/api/v2/pipeline/${pipelineId}/workflow`,
-      headers: this.circleCIHeaders
+      headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error) throw new Error(error);
+    if (response.error) { throw new Error(error); }
 
     const body = JSON.parse(response.body);
     return body.items.find(workflow => workflow.name === workflowName);
   }
 
-  async #getPackageAndReleaseWorkflow(pipelineId){
-    return this.#getSpecificWorkflow(pipelineId, 'package_and_publish_release_dryrun');
+  async #getPackageAndReleaseWorkflow(pipelineId) {
+    return this.#getSpecificWorkflow(
+      pipelineId,
+      'package_and_publish_release_dryrun',
+    );
   }
 
-  async #getTestsWorkflow(pipelineId){
+  async #getTestsWorkflow(pipelineId) {
     return this.#getSpecificWorkflow(pipelineId, 'tests');
   }
 
-  async #getCircleCIJobs(workflowId){
+  async #getCircleCIJobs(workflowId) {
     const options = {
       method: 'GET',
       url: `https://circleci.com/api/v2/workflow/${workflowId}/job`,
-      headers: this.circleCIHeaders
+      headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error) throw new Error(error);
+    if (response.error){ throw new Error(error); }
 
     const body = JSON.parse(response.body);
-    return body.items
+    return body.items;
   }
 
-  async #getJobsArtifacts(jobNumber){
+  async #getJobsArtifacts(jobNumber) {
     const options = {
       method: 'GET',
       url: `https://circleci.com/api/v2/project/gh/facebook/react-native/${jobNumber}/artifacts`,
-      headers: this.circleCIHeaders
+      headers: this.circleCIHeaders,
     };
     const response = await request(options);
-    if (response.error) throw new Error(error);
+    if (response.error){ throw new Error(error); }
 
     const body = JSON.parse(response.body);
-    return body.items
+    return body.items;
   }
 
   async #findUrlForJob(jobName, artifactPath) {
-    const job = this.jobs.find(job => job.name === jobName);
+    const job = this.jobs.find(j => j.name === jobName);
     const artifacts = await this.#getJobsArtifacts(job.job_number);
-    return artifacts.find(artifact => artifact.path.indexOf(artifactPath) > -1).url;
+    return artifacts.find(artifact => artifact.path.indexOf(artifactPath) > -1)
+      .url;
   }
 
   async artifactURLHermesDebug() {
-    return this.#findUrlForJob('build_hermes_macos-Debug', 'hermes-ios-debug.tar.gz');
+    return this.#findUrlForJob(
+      'build_hermes_macos-Debug',
+      'hermes-ios-debug.tar.gz',
+    );
   }
 
   async artifactURLForMavenLocal() {
-    return this.#findUrlForJob('build_and_publish_npm_package-2', 'maven-local.zip');
+    return this.#findUrlForJob(
+      'build_and_publish_npm_package-2',
+      'maven-local.zip',
+    );
   }
 
   async artifactURLForPackagedReactNative() {
-    return this.#findUrlForJob('build_and_publish_npm_package-2', 'react-native-1000.0.0-');
+    return this.#findUrlForJob(
+      'build_and_publish_npm_package-2',
+      'react-native-1000.0.0-',
+    );
   }
 
   async artifactURLForHermesRNTesterAPK() {
-    return this.#findUrlForJob('test_android', 'rntester-apk/hermes/release/app-hermes-arm64-v8a-release.apk');
+    return this.#findUrlForJob(
+      'test_android',
+      'rntester-apk/hermes/release/app-hermes-arm64-v8a-release.apk',
+    );
   }
 
   async artifactURLForJSCRNTesterAPK() {
-    return this.#findUrlForJob('test_android', 'rntester-apk/jsc/release/app-jsc-arm64-v8a-release.apk');
+    return this.#findUrlForJob(
+      'test_android',
+      'rntester-apk/jsc/release/app-jsc-arm64-v8a-release.apk',
+    );
   }
 
-  async downloadArtifact(artifactURL, destination) {
+  downloadArtifact(artifactURL, destination) {
     exec(`rm -rf ${destination}`);
     exec(`curl ${artifactURL} -Lo ${destination}`);
   }
-
 }
 
 module.exports = {

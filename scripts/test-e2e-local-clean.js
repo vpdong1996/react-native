@@ -44,7 +44,8 @@ if (isPackagerRunning() === 'running') {
 console.info('\n** Cleaning Gradle build artifacts **\n');
 exec('./gradlew clean');
 exec('rm -rf /tmp/maven-local');
-exec('rm -rf /tmp/hermes-ios-debug.tar.gz');
+exec('rm -rf /tmp/maven-local.zip');
+exec('rm -rf /tmp/rntester.apk');
 
 // iOS
 console.info('\n** Nuking the derived data folder **\n');
@@ -52,17 +53,16 @@ exec('rm -rf ~/Library/Developer/Xcode/DerivedData');
 
 console.info('\n** Removing the hermes-engine pod cache **\n');
 exec('rm -rf ~/Library/Caches/CocoaPods/Pods/External/hermes-engine');
+exec('rm -rf /tmp/hermes-ios-debug.tar.gz');
 
 // RNTester Pods
 console.info('\n** Removing the RNTester Pods **\n');
 exec('rm -rf packages/rn-tester/Pods');
 
-// I'm not sure we want to also remove the lock file
-// exec('rm -rf packages/rn-tester/Podfile.lock');
-
 // RNTestProject
 console.info('\n** Removing the RNTestProject folder **\n');
 exec('rm -rf /tmp/RNTestProject');
+exec('rm -rf /tmp/packaged-react-native.tar.gz');
 
 // final clean up
 console.info('\n** Final git level wipe **\n');
