@@ -44,8 +44,7 @@ if (isPackagerRunning() === 'running') {
 console.info('\n** Cleaning Gradle build artifacts **\n');
 exec('./gradlew clean');
 exec('rm -rf /tmp/maven-local');
-exec('rm -rf /tmp/maven-local.zip');
-exec('rm -rf /tmp/rntester.apk');
+exec('rm -rf /tmp/react-native-tmp');
 
 // iOS
 console.info('\n** Nuking the derived data folder **\n');
@@ -53,7 +52,6 @@ exec('rm -rf ~/Library/Developer/Xcode/DerivedData');
 
 console.info('\n** Removing the hermes-engine pod cache **\n');
 exec('rm -rf ~/Library/Caches/CocoaPods/Pods/External/hermes-engine');
-exec('rm -rf /tmp/hermes-ios-debug.tar.gz');
 
 // RNTester Pods
 console.info('\n** Removing the RNTester Pods **\n');

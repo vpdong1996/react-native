@@ -262,9 +262,10 @@ class CircleCIArtifacts {
   }
 
   async artifactURLForHermesRNTesterAPK() {
+    const emulatorArch = exec('adb shell getprop ro.product.cpu.abi');
     return this.#findUrlForJob(
       'test_android',
-      'rntester-apk/hermes/release/app-hermes-arm64-v8a-release.apk',
+      `rntester-apk/hermes/release/app-hermes-${emulatorArch}-release.apk`,
     );
   }
 

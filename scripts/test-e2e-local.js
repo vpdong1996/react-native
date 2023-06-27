@@ -19,6 +19,7 @@
 const {exec, pushd, popd, pwd, cd} = require('shelljs');
 const updateTemplatePackage = require('../scripts/update-template-package');
 const yargs = require('yargs');
+const path = require('path');
 
 const {
   maybeLaunchAndroidEmulator,
@@ -76,6 +77,9 @@ async function main() {
   const circleCIArtifacts = new CircleCIArtifacts(argv.circleciToken);
   await circleCIArtifacts.initialize(branchName);
 
+  const baseTmpPath = '/tmp/react-native-tmp';
+  exec(`mkdir -p ${baseTmpPath}`);
+
   if (argv.target === 'RNTester') {
     // FIXME: make sure that the commands retains colors
     // (--ansi) doesn't always work
@@ -97,7 +101,7 @@ async function main() {
       // hermes ref from the hermes ref file (see hermes-engine.podspec)
       if (argv.hermes) {
         const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
-        const hermesPath = '/tmp/hermes-ios-debug.tar.gz';
+        const hermesPath = path.join(baseTmpPath, 'hermes-ios-debug.tar.gz');
         // download hermes source code from manifold
         circleCIArtifacts.downloadArtifact(hermesURL, hermesPath);
         console.info(`Downloaded Hermes in ${hermesPath}`);
@@ -129,7 +133,7 @@ async function main() {
         } version of RNTester Android with the new Architecture enabled`,
       );
 
-      const downloadPath = '/tmp/rntester.apk';
+      const downloadPath = path.join(baseTmpPath, 'rntester.apk');
 
       const rntesterAPKURL = argv.hermes
         ? await circleCIArtifacts.artifactURLForHermesRNTesterAPK()
@@ -168,10 +172,6 @@ async function main() {
     const baseVersion =
       require('../packages/react-native/package.json').version;
 
-    // // in local testing, 1000.0.0 mean we are on main, every other case means we are
-    // // working on a release version
-    // const buildType = baseVersion !== '1000.0.0' ? 'release' : 'dry-run';
-
     const dateIdentifier = new Date()
       .toISOString()
       .slice(0, -8)
@@ -187,9 +187,9 @@ async function main() {
       await circleCIArtifacts.artifactURLForPackagedReactNative();
     const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
 
-    const mavenLocalPath = '/tmp/maven-local.zip';
+    const mavenLocalPath = path.join(baseTmpPath, 'maven-local.zip');
     const packagedReactNativePath = '/tmp/packaged-react-native.tar.gz';
-    const hermesPath = '/tmp/hermes-ios-debug.tar.gz';
+    const hermesPath = path.join(baseTmpPath, 'hermes-ios-debug.tar.gz');
 
     console.info('[Download] Maven Local Artifacts');
     circleCIArtifacts.downloadArtifact(mavenLocalURL, mavenLocalPath);
