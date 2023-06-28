@@ -82,7 +82,7 @@ async function testRNTesterIOS(circleCIArtifacts, onReleaseBranch) {
   if (argv.hermes && circleCIArtifacts != null) {
     const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
     const hermesPath = path.join(
-      circleCIArtifacts.baseTmpPath(),
+      circleCIArtifacts.baseTmpPath,
       'hermes-ios-debug.tar.gz',
     );
     // download hermes source code from manifold
@@ -127,7 +127,7 @@ async function testRNTesterAndroid(circleCIArtifacts) {
 
   if (circleCIArtifacts != null) {
     const downloadPath = path.join(
-      circleCIArtifacts.baseTmpPath(),
+      circleCIArtifacts.baseTmpPath,
       'rntester.apk',
     );
 
@@ -193,7 +193,7 @@ async function downloadArtifactsFromCircleCI(
 
   const packagedReactNativePath = '/tmp/packaged-react-native.tar.gz';
   const hermesPath = path.join(
-    circleCIArtifacts.baseTmpPath(),
+    circleCIArtifacts.baseTmpPath,
     'hermes-ios-debug.tar.gz',
   );
 
@@ -324,7 +324,7 @@ async function testRNTestProject(circleCIArtifacts) {
   const localNodeTGZPath = `${reactNativePackagePath}/react-native-${releaseVersion}.tgz`;
   const mavenLocalPath =
     circleCIArtifacts != null
-      ? path.join(circleCIArtifacts.baseTmpPath(), 'maven-local.zip')
+      ? path.join(circleCIArtifacts.baseTmpPath, 'maven-local.zip')
       : '/private/tmp/maven-local';
   const hermesPath = prepareArtifacts(
     circleCIArtifacts,

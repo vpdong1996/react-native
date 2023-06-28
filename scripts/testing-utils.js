@@ -153,7 +153,7 @@ class CircleCIArtifacts {
     this.jobs = jobsResults.flatMap(jobs => jobs);
   }
 
-  baseTempPath() {
+  baseTmpPath() {
     return this.baseTmpPath;
   }
 
