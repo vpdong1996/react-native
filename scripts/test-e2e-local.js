@@ -67,8 +67,9 @@ function checkPackagerRunning() {
  *
  * Parameters:
  * - @circleCIArtifacts manager object to manage all the download of CircleCIArtifacts. If null, it will fallback not to use them.
+ * - @onReleaseBranch whether we are on a release branch or not
  */
-async function testRNTesterIOS(circleCIArtifacts) {
+async function testRNTesterIOS(circleCIArtifacts, onReleaseBranch) {
   console.info(
     `We're going to test the ${
       argv.hermes ? 'Hermes' : 'JSC'
@@ -80,7 +81,10 @@ async function testRNTesterIOS(circleCIArtifacts) {
   // in your local setup
   if (argv.hermes && circleCIArtifacts != null) {
     const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
-    const hermesPath = path.join(circleCIArtifacts.baseTmpPath(), 'hermes-ios-debug.tar.gz');
+    const hermesPath = path.join(
+      circleCIArtifacts.baseTmpPath(),
+      'hermes-ios-debug.tar.gz',
+    );
     // download hermes source code from manifold
     circleCIArtifacts.downloadArtifact(hermesURL, hermesPath);
     console.info(`Downloaded Hermes in ${hermesPath}`);
@@ -100,9 +104,7 @@ async function testRNTesterIOS(circleCIArtifacts) {
   launchPackagerInSeparateWindow(pwd());
 
   // launch the app on iOS simulator
-  exec(
-    'npx react-native run-ios --scheme RNTester --simulator "iPhone 14"',
-  );
+  exec('npx react-native run-ios --scheme RNTester --simulator "iPhone 14"');
 }
 
 /**
@@ -124,7 +126,10 @@ async function testRNTesterAndroid(circleCIArtifacts) {
   launchPackagerInSeparateWindow(pwd());
 
   if (circleCIArtifacts != null) {
-    const downloadPath = path.join(circleCIArtifacts.baseTmpPath(), 'rntester.apk');
+    const downloadPath = path.join(
+      circleCIArtifacts.baseTmpPath(),
+      'rntester.apk',
+    );
 
     const rntesterAPKURL = argv.hermes
       ? await circleCIArtifacts.artifactURLForHermesRNTesterAPK()
@@ -158,31 +163,39 @@ async function testRNTesterAndroid(circleCIArtifacts) {
  *
  * Parameters:
  * - @circleCIArtifacts manager object to manage all the download of CircleCIArtifacts. If null, it will fallback not to use them.
+ * - @onReleaseBranch whether we are on a release branch or not
  */
-async function testRNTester(circleCIArtifacts) {
-      // FIXME: make sure that the commands retains colors
-    // (--ansi) doesn't always work
-    // see also https://github.com/shelljs/shelljs/issues/86
-    pushd('packages/rn-tester');
+async function testRNTester(circleCIArtifacts, onReleaseBranch) {
+  // FIXME: make sure that the commands retains colors
+  // (--ansi) doesn't always work
+  // see also https://github.com/shelljs/shelljs/issues/86
+  pushd('packages/rn-tester');
 
-    if (argv.platform === 'iOS') {
-      await testRNTesterIOS(circleCIArtifacts)
-    } else {
-      await testRNTesterAndroid(circleCIArtifacts)
-    }
-    popd();
+  if (argv.platform === 'iOS') {
+    await testRNTesterIOS(circleCIArtifacts, onReleaseBranch);
+  } else {
+    await testRNTesterAndroid(circleCIArtifacts);
+  }
+  popd();
 }
 
 // === RNTestProject === //
 
-async function downloadArtifactsFromCircleCI(circleCIArtifacts, mavenLocalPath, localNodeTGZPath) {
+async function downloadArtifactsFromCircleCI(
+  circleCIArtifacts,
+  mavenLocalPath,
+  localNodeTGZPath,
+) {
   const mavenLocalURL = await circleCIArtifacts.artifactURLForMavenLocal();
   const packagedReactNativeURL =
     await circleCIArtifacts.artifactURLForPackagedReactNative();
   const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
 
   const packagedReactNativePath = '/tmp/packaged-react-native.tar.gz';
-  const hermesPath = path.join(circleCIArtifacts.baseTmpPath(), 'hermes-ios-debug.tar.gz');
+  const hermesPath = path.join(
+    circleCIArtifacts.baseTmpPath(),
+    'hermes-ios-debug.tar.gz',
+  );
 
   console.info('[Download] Maven Local Artifacts');
   circleCIArtifacts.downloadArtifact(mavenLocalURL, mavenLocalPath);
@@ -198,7 +211,11 @@ async function downloadArtifactsFromCircleCI(circleCIArtifacts, mavenLocalPath, 
   return hermesPath;
 }
 
-function buildArtifactsLocally(releaseVersion, buildType, reactNativePackagePath) {
+function buildArtifactsLocally(
+  releaseVersion,
+  buildType,
+  reactNativePackagePath,
+) {
   // this is needed to generate the Android artifacts correctly
   const exitCode = exec(
     `node scripts/set-rn-version.js --to-version ${releaseVersion} --build-type ${buildType}`,
@@ -263,9 +280,20 @@ function buildArtifactsLocally(releaseVersion, buildType, reactNativePackagePath
  * Returns:
  * - @hermesPath the path to hermes for iOS
  */
-async function prepareArtifacts(circleCIArtifacts, mavenLocalPath, localNodeTGZPath, releaseVersion, buildType, reactNativePackagePath) {
+async function prepareArtifacts(
+  circleCIArtifacts,
+  mavenLocalPath,
+  localNodeTGZPath,
+  releaseVersion,
+  buildType,
+  reactNativePackagePath,
+) {
   return circleCIArtifacts != null
-    ? await downloadArtifactsFromCircleCI(circleCIArtifacts, mavenLocalPath, localNodeTGZPath)
+    ? await downloadArtifactsFromCircleCI(
+        circleCIArtifacts,
+        mavenLocalPath,
+        localNodeTGZPath,
+      )
     : buildArtifactsLocally(releaseVersion, buildType, reactNativePackagePath);
 }
 
@@ -275,8 +303,7 @@ async function testRNTestProject(circleCIArtifacts) {
   // create the local npm package to feed the CLI
 
   // base setup required (specular to publish-npm.js)
-  const baseVersion =
-    require('../packages/react-native/package.json').version;
+  const baseVersion = require('../packages/react-native/package.json').version;
 
   // in local testing, 1000.0.0 mean we are on main, every other case means we are
   // working on a release version
@@ -295,10 +322,18 @@ async function testRNTestProject(circleCIArtifacts) {
   const repoRoot = pwd();
   const reactNativePackagePath = `${repoRoot}/packages/react-native`;
   const localNodeTGZPath = `${reactNativePackagePath}/react-native-${releaseVersion}.tgz`;
-  const mavenLocalPath = circleCIArtifacts != null
-    ? path.join(circleCIArtifacts.baseTmpPath(), 'maven-local.zip')
-    : '/private/tmp/maven-local';
-  const hermesPath = prepareArtifacts(circleCIArtifacts, mavenLocalPath, localNodeTGZPath, releaseVersion, buildType, reactNativePackagePath);
+  const mavenLocalPath =
+    circleCIArtifacts != null
+      ? path.join(circleCIArtifacts.baseTmpPath(), 'maven-local.zip')
+      : '/private/tmp/maven-local';
+  const hermesPath = prepareArtifacts(
+    circleCIArtifacts,
+    mavenLocalPath,
+    localNodeTGZPath,
+    releaseVersion,
+    buildType,
+    reactNativePackagePath,
+  );
 
   updateTemplatePackage({
     'react-native': `file:${localNodeTGZPath}`,
@@ -346,8 +381,9 @@ async function testRNTestProject(circleCIArtifacts) {
  *
  * Parameters:
  * - @circleciToken a valid CircleCI Token.
+ * - @branchName the branch of the name we want to use to fetch the artifacts.
  */
-async function setupCircleCIArtifacts(circleciToken) {
+async function setupCircleCIArtifacts(circleciToken, branchName) {
   if (!circleciToken) {
     return null;
   }
@@ -376,10 +412,13 @@ async function main() {
   }).stdout.trim();
   const onReleaseBranch = branchName.endsWith('-stable');
 
-  let circleCIArtifacts = await setupCircleCIArtifacts(argv.circleciToken);
+  let circleCIArtifacts = await setupCircleCIArtifacts(
+    argv.circleciToken,
+    branchName,
+  );
 
   if (argv.target === 'RNTester') {
-    await testRNTester(circleCIArtifacts);
+    await testRNTester(circleCIArtifacts, onReleaseBranch);
   } else {
     await testRNTestProject(circleCIArtifacts);
   }

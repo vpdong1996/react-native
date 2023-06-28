@@ -130,7 +130,7 @@ class CircleCIArtifacts {
 
   constructor(circleCIToken, baseTmpPath) {
     this.circleCIToken = {'Circle-Token': circleCIToken};
-    this.baseTmpPath = baseTmpPath
+    this.baseTmpPath = baseTmpPath;
     exec(`mkdir -p ${baseTmpPath}`);
   }
 
