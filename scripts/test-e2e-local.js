@@ -202,7 +202,10 @@ async function downloadArtifactsFromCircleCI(
     await circleCIArtifacts.artifactURLForPackagedReactNative();
   const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
 
-  const packagedReactNativePath = path.join(circleCIArtifacts.baseTmpPath, '/tmp/packaged-react-native.tar.gz');
+  const packagedReactNativePath = path.join(
+    circleCIArtifacts.baseTmpPath,
+    '/tmp/packaged-react-native.tar.gz',
+  );
   const hermesPath = path.join(
     circleCIArtifacts.baseTmpPath,
     'hermes-ios-debug.tar.gz',
@@ -337,7 +340,7 @@ async function testRNTestProject(circleCIArtifacts) {
     circleCIArtifacts != null
       ? path.join(circleCIArtifacts.baseTmpPath, 'maven-local.zip')
       : '/private/tmp/maven-local';
-  const hermesPath = prepareArtifacts(
+  const hermesPath = await prepareArtifacts(
     circleCIArtifacts,
     mavenLocalPath,
     localNodeTGZPath,
@@ -354,7 +357,7 @@ async function testRNTestProject(circleCIArtifacts) {
   exec('npm pack', {cwd: reactNativePackagePath});
 
   pushd('/tmp/');
-  // need to avoid the pod install step - we'll do it later
+  // // need to avoid the pod install step - we'll do it later
   exec(
     `node ${reactNativePackagePath}/cli.js init RNTestProject --template ${localNodeTGZPath} --skip-install`,
   );
