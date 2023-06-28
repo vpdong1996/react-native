@@ -126,9 +126,12 @@ class CircleCIArtifacts {
   #jobs;
   #workflowId;
   #pipelineNumber;
+  #baseTmpPath;
 
-  constructor(circleCIToken) {
+  constructor(circleCIToken, baseTmpPath) {
     this.circleCIToken = {'Circle-Token': circleCIToken};
+    this.baseTmpPath = baseTmpPath
+    exec(`mkdir -p ${baseTmpPath}`);
   }
 
   async initialize(branchName) {
@@ -148,6 +151,10 @@ class CircleCIArtifacts {
     const jobsResults = await Promise.all(jobsPromises);
 
     this.jobs = jobsResults.flatMap(jobs => jobs);
+  }
+
+  baseTempPath() {
+    return this.baseTmpPath;
   }
 
   async #throwIfPendingOrUnsuccessfulWorkflow(workflow) {
