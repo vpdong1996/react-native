@@ -60,7 +60,6 @@ exec('rm -rf packages/rn-tester/Pods');
 // RNTestProject
 console.info('\n** Removing the RNTestProject folder **\n');
 exec('rm -rf /tmp/RNTestProject');
-exec('rm -rf /tmp/packaged-react-native.tar.gz');
 
 // final clean up
 console.info('\n** Final git level wipe **\n');

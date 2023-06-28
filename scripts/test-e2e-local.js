@@ -16,10 +16,21 @@
  * and to make it more accessible for other devs to play around with.
  */
 
-const {exec, pushd, popd, pwd, cd} = require('shelljs');
+const {exec, pushd, popd, pwd, cd, cp} = require('shelljs');
 const updateTemplatePackage = require('../scripts/update-template-package');
 const yargs = require('yargs');
 const path = require('path');
+const fs = require('fs');
+
+const {
+  generateAndroidArtifacts,
+  generateiOSArtifacts,
+} = require('./release-utils');
+
+const {
+  downloadHermesSourceTarball,
+  expandHermesSourceTarball,
+} = require('react-native/scripts/hermes/hermes-utils.js');
 
 const {
   maybeLaunchAndroidEmulator,
@@ -191,7 +202,7 @@ async function downloadArtifactsFromCircleCI(
     await circleCIArtifacts.artifactURLForPackagedReactNative();
   const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
 
-  const packagedReactNativePath = '/tmp/packaged-react-native.tar.gz';
+  const packagedReactNativePath = path.join(circleCIArtifacts.baseTmpPath, '/tmp/packaged-react-native.tar.gz');
   const hermesPath = path.join(
     circleCIArtifacts.baseTmpPath,
     'hermes-ios-debug.tar.gz',
@@ -256,7 +267,7 @@ function buildArtifactsLocally(
   const localMavenPath = '/private/tmp/maven-local';
 
   // Generate native files for iOS
-  hermesPath = generateiOSArtifacts(
+  const hermesPath = generateiOSArtifacts(
     jsiFolder,
     hermesCoreSourceFolder,
     buildTypeiOSArtifacts,
