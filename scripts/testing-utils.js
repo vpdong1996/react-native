@@ -12,6 +12,7 @@
 const {exec} = require('shelljs');
 const os = require('os');
 const {spawn} = require('node:child_process');
+const path = require('path');
 
 const util = require('util');
 const asyncRequest = require('request');
@@ -162,7 +163,7 @@ async function downloadArtifactsFromCircleCI(
 
   const packagedReactNativePath = path.join(
     circleCIArtifacts.baseTmpPath,
-    '/tmp/packaged-react-native.tar.gz',
+    '/packaged-react-native.tar.gz',
   );
   const hermesPath = path.join(
     circleCIArtifacts.baseTmpPath,
@@ -179,6 +180,7 @@ async function downloadArtifactsFromCircleCI(
   console.info('[Download] Hermes');
   circleCIArtifacts.downloadArtifact(hermesURL, hermesPath);
 
+  console.log(`>>> Copying the packaged version of react native\nfrom: '${packagedReactNativePath}\n  to: ${localNodeTGZPath}'`)
   exec(`cp ${packagedReactNativePath} ${localNodeTGZPath}`);
   return hermesPath;
 }
@@ -441,8 +443,11 @@ class CircleCIArtifacts {
 }
 
 module.exports = {
+  checkPackagerRunning,
   maybeLaunchAndroidEmulator,
   isPackagerRunning,
   launchPackagerInSeparateWindow,
   CircleCIArtifacts,
+  setupCircleCIArtifacts,
+  prepareArtifacts,
 };

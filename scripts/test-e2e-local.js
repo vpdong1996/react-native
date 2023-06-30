@@ -37,7 +37,7 @@ const {
   maybeLaunchAndroidEmulator,
   isPackagerRunning,
   launchPackagerInSeparateWindow,
-  setupCircleCIArtifacts
+  setupCircleCIArtifacts,
   prepareArtifacts,
 } = require('./testing-utils');
 
@@ -208,6 +208,8 @@ async function testRNTestProject(circleCIArtifacts) {
   const repoRoot = pwd();
   const reactNativePackagePath = `${repoRoot}/packages/react-native`;
   const localNodeTGZPath = `${reactNativePackagePath}/react-native-${releaseVersion}.tgz`;
+  console.log(`The final path for react native archive is: ${localNodeTGZPath}`);
+
   const mavenLocalPath =
     circleCIArtifacts != null
       ? path.join(circleCIArtifacts.baseTmpPath, 'maven-local.zip')
