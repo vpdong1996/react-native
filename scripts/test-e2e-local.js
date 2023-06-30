@@ -33,10 +33,12 @@ const {
 } = require('react-native/scripts/hermes/hermes-utils.js');
 
 const {
+  checkPackagerRunning,
   maybeLaunchAndroidEmulator,
   isPackagerRunning,
   launchPackagerInSeparateWindow,
-  CircleCIArtifacts,
+  setupCircleCIArtifacts
+  prepareArtifacts,
 } = require('./testing-utils');
 
 const argv = yargs
@@ -59,17 +61,6 @@ const argv = yargs
     alias: 'circleciToken',
     type: 'string',
   }).argv;
-
-/**
- * Checks if Metro is running and it kills it if that's the case
- */
-function checkPackagerRunning() {
-  if (isPackagerRunning() === 'running') {
-    exec(
-      "lsof -i :8081 | grep LISTEN | /usr/bin/awk '{print $2}' | xargs kill",
-    );
-  }
-}
 
 // === RNTester === //
 
@@ -192,125 +183,6 @@ async function testRNTester(circleCIArtifacts, onReleaseBranch) {
 
 // === RNTestProject === //
 
-async function downloadArtifactsFromCircleCI(
-  circleCIArtifacts,
-  mavenLocalPath,
-  localNodeTGZPath,
-) {
-  const mavenLocalURL = await circleCIArtifacts.artifactURLForMavenLocal();
-  const packagedReactNativeURL =
-    await circleCIArtifacts.artifactURLForPackagedReactNative();
-  const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
-
-  const packagedReactNativePath = path.join(
-    circleCIArtifacts.baseTmpPath,
-    '/tmp/packaged-react-native.tar.gz',
-  );
-  const hermesPath = path.join(
-    circleCIArtifacts.baseTmpPath,
-    'hermes-ios-debug.tar.gz',
-  );
-
-  console.info('[Download] Maven Local Artifacts');
-  circleCIArtifacts.downloadArtifact(mavenLocalURL, mavenLocalPath);
-  console.info('[Download] Packaged React Native');
-  circleCIArtifacts.downloadArtifact(
-    packagedReactNativeURL,
-    packagedReactNativePath,
-  );
-  console.info('[Download] Hermes');
-  circleCIArtifacts.downloadArtifact(hermesURL, hermesPath);
-
-  exec(`cp ${packagedReactNativePath} ${localNodeTGZPath}`);
-  return hermesPath;
-}
-
-function buildArtifactsLocally(
-  releaseVersion,
-  buildType,
-  reactNativePackagePath,
-) {
-  // this is needed to generate the Android artifacts correctly
-  const exitCode = exec(
-    `node scripts/set-rn-version.js --to-version ${releaseVersion} --build-type ${buildType}`,
-  ).code;
-
-  if (exitCode !== 0) {
-    console.error(
-      `Failed to set the RN version. Version ${releaseVersion} is not valid for ${buildType}`,
-    );
-    process.exit(exitCode);
-  }
-
-  // Generate native files for Android
-  generateAndroidArtifacts(releaseVersion);
-
-  // Generate iOS Artifacts
-  const jsiFolder = `${reactNativePackagePath}/ReactCommon/jsi`;
-  const hermesCoreSourceFolder = `${reactNativePackagePath}/sdks/hermes`;
-
-  if (!fs.existsSync(hermesCoreSourceFolder)) {
-    console.info('The Hermes source folder is missing. Downloading...');
-    downloadHermesSourceTarball();
-    expandHermesSourceTarball();
-  }
-
-  // need to move the scripts inside the local hermes cloned folder
-  // cp sdks/hermes-engine/utils/*.sh <your_hermes_checkout>/utils/.
-  cp(
-    `${reactNativePackagePath}/sdks/hermes-engine/utils/*.sh`,
-    `${reactNativePackagePath}/sdks/hermes/utils/.`,
-  );
-
-  // for this scenario, we only need to create the debug build
-  // (env variable PRODUCTION defines that podspec side)
-  const buildTypeiOSArtifacts = 'Debug';
-
-  // the android ones get set into /private/tmp/maven-local
-  const localMavenPath = '/private/tmp/maven-local';
-
-  // Generate native files for iOS
-  const hermesPath = generateiOSArtifacts(
-    jsiFolder,
-    hermesCoreSourceFolder,
-    buildTypeiOSArtifacts,
-    localMavenPath,
-  );
-
-  return hermesPath;
-}
-
-/**
- * It prepares the artifacts required to run a new project created from the template
- *
- * Parameters:
- * - @circleCIArtifacts manager object to manage all the download of CircleCIArtifacts. If null, it will fallback not to use them.
- * - @mavenLocalPath path to the local maven repo that is needed by Android.
- * - @localNodeTGZPath path where we want to store the react-native tgz.
- * - @releaseVersion the version that is about to be released.
- * - @buildType the type of build we want to execute if we build locally.
- * - @reactNativePackagePath the path to the react native package within the repo.
- *
- * Returns:
- * - @hermesPath the path to hermes for iOS
- */
-async function prepareArtifacts(
-  circleCIArtifacts,
-  mavenLocalPath,
-  localNodeTGZPath,
-  releaseVersion,
-  buildType,
-  reactNativePackagePath,
-) {
-  return circleCIArtifacts != null
-    ? await downloadArtifactsFromCircleCI(
-        circleCIArtifacts,
-        mavenLocalPath,
-        localNodeTGZPath,
-      )
-    : buildArtifactsLocally(releaseVersion, buildType, reactNativePackagePath);
-}
-
 async function testRNTestProject(circleCIArtifacts) {
   console.info("We're going to test a fresh new RN project");
 
@@ -388,24 +260,6 @@ async function testRNTestProject(circleCIArtifacts) {
     exec('yarn android');
   }
   popd();
-}
-
-/**
- * Setups the CircleCIArtifacts if a token has been passed
- *
- * Parameters:
- * - @circleciToken a valid CircleCI Token.
- * - @branchName the branch of the name we want to use to fetch the artifacts.
- */
-async function setupCircleCIArtifacts(circleciToken, branchName) {
-  if (!circleciToken) {
-    return null;
-  }
-
-  const baseTmpPath = '/tmp/react-native-tmp';
-  const circleCIArtifacts = new CircleCIArtifacts(circleciToken, baseTmpPath);
-  await circleCIArtifacts.initialize(branchName);
-  return circleCIArtifacts;
 }
 
 async function main() {
