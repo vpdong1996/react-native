@@ -17,7 +17,7 @@
  */
 
 const {exec, pushd, popd, pwd, cd, cp} = require('shelljs');
-const updateTemplatePackage = require('../scripts/update-template-package');
+const updateTemplatePackage = require('./update-template-package');
 const yargs = require('yargs');
 const path = require('path');
 const fs = require('fs');
@@ -84,7 +84,7 @@ async function testRNTesterIOS(circleCIArtifacts, onReleaseBranch) {
   if (argv.hermes && circleCIArtifacts != null) {
     const hermesURL = await circleCIArtifacts.artifactURLHermesDebug();
     const hermesPath = path.join(
-      circleCIArtifacts.baseTmpPath,
+      circleCIArtifacts.baseTmpPath(),
       'hermes-ios-debug.tar.gz',
     );
     // download hermes source code from manifold
@@ -129,7 +129,7 @@ async function testRNTesterAndroid(circleCIArtifacts) {
 
   if (circleCIArtifacts != null) {
     const downloadPath = path.join(
-      circleCIArtifacts.baseTmpPath,
+      circleCIArtifacts.baseTmpPath(),
       'rntester.apk',
     );
 
@@ -208,11 +208,10 @@ async function testRNTestProject(circleCIArtifacts) {
   const repoRoot = pwd();
   const reactNativePackagePath = `${repoRoot}/packages/react-native`;
   const localNodeTGZPath = `${reactNativePackagePath}/react-native-${releaseVersion}.tgz`;
-  console.log(`The final path for react native archive is: ${localNodeTGZPath}`);
 
   const mavenLocalPath =
     circleCIArtifacts != null
-      ? path.join(circleCIArtifacts.baseTmpPath, 'maven-local.zip')
+      ? path.join(circleCIArtifacts.baseTmpPath(), 'maven-local.zip')
       : '/private/tmp/maven-local';
   const hermesPath = await prepareArtifacts(
     circleCIArtifacts,
@@ -228,7 +227,18 @@ async function testRNTestProject(circleCIArtifacts) {
   });
 
   // create locally the node module
-  exec('npm pack', {cwd: reactNativePackagePath});
+  exec('npm pack --pack-destination ', {cwd: reactNativePackagePath});
+
+  // node pack does not creates a version of React Native with the right name on main.
+  // Let's add some defensive programming checks:
+  if (!fs.existsSync(localNodeTGZPath)) {
+    const tarfile = fs.readdirSync(reactNativePackagePath)
+      .find(name => name.startsWith('react-native-') && name.endsWith('.tgz'));
+    if (!tarfile) {
+      throw new Error("Couldn't find a zipped version of react-native");
+    }
+    exec(`cp ${path.join(reactNativePackagePath, tarfile)} ${localNodeTGZPath}`);
+  }
 
   pushd('/tmp/');
   // // need to avoid the pod install step - we'll do it later
