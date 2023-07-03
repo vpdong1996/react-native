@@ -39,7 +39,7 @@ async function initialize(circleCIToken, baseTempPath, branchName) {
 
   const jobsResults = await Promise.all(jobsPromises);
 
-  jobs = jobsResults.flatMap(jobs => jobs);
+  jobs = jobsResults.flatMap(j => j);
 }
 
 function baseTmpPath() {

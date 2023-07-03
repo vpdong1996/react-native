@@ -116,6 +116,11 @@ async function testRNTesterAndroid(circleCIArtifacts) {
   // Start the Metro server so it will be ready if the app can be built and installed successfully.
   launchPackagerInSeparateWindow(pwd());
 
+  // Wait for the Android Emulator to be properly loaded and bootstrapped
+  exec(
+    "adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'",
+  );
+
   if (circleCIArtifacts != null) {
     const downloadPath = path.join(
       circleCIArtifacts.baseTmpPath(),

@@ -48,12 +48,12 @@ const launchEmulator = emulatorName => {
   // from docs: "When using the detached option to start a long-running process, the process will not stay running in the background after the parent exits unless it is provided with a stdio configuration that is not connected to the parent. If the parent's stdio is inherited, the child will remain attached to the controlling terminal."
   // here: https://nodejs.org/api/child_process.html#optionsdetached
 
-  const cp = spawn(emulatorCommand, [`@${emulatorName}`], {
+  const child_process = spawn(emulatorCommand, [`@${emulatorName}`], {
     detached: true,
     stdio: 'ignore',
   });
 
-  cp.unref();
+  child_process.unref();
 };
 
 function tryLaunchEmulator() {
@@ -82,7 +82,7 @@ function hasConnectedDevice() {
 }
 
 function maybeLaunchAndroidEmulator() {
-  if (hasConnectedDevice) {
+  if (hasConnectedDevice()) {
     console.info('Already have a device connected. Skip launching emulator.');
     return;
   }
