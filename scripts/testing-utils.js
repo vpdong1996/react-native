@@ -10,6 +10,7 @@
 'use strict';
 
 const {exec, cp} = require('shelljs');
+const fs = require('fs');
 const os = require('os');
 const {spawn} = require('node:child_process');
 const path = require('path');
@@ -125,7 +126,7 @@ function isPackagerRunning(
 // this is a very limited implementation of how this should work
 function launchPackagerInSeparateWindow(folderPath) {
   const command = `tell application "Terminal" to do script "cd ${folderPath} && yarn start"`;
-  exec(`osascript -e '${command}'`);
+  exec(`osascript -e '${command}' >/dev/null <<EOF`);
 }
 
 /**
