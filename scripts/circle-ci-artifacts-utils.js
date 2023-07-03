@@ -141,18 +141,17 @@ async function artifactURLForMavenLocal() {
   return _findUrlForJob('build_and_publish_npm_package-2', 'maven-local.zip');
 }
 
-async function artifactURLForHermesRNTesterAPK() {
-  const emulatorArch = exec('adb shell getprop ro.product.cpu.abi').trim();
+async function artifactURLForHermesRNTesterAPK(emulatorArch) {
   return _findUrlForJob(
     'test_android',
-    `rntester-apk/hermes/release/app-hermes-${emulatorArch}-release.apk`,
+    `rntester-apk/hermes/debug/app-hermes-${emulatorArch}-debug.apk`,
   );
 }
 
-async function artifactURLForJSCRNTesterAPK() {
+async function artifactURLForJSCRNTesterAPK(emulatorArch) {
   return _findUrlForJob(
     'test_android',
-    'rntester-apk/jsc/release/app-jsc-arm64-v8a-release.apk',
+    `rntester-apk/jsc/debug/app-jsc-${emulatorArch}-debug.apk`,
   );
 }
 

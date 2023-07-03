@@ -127,9 +127,10 @@ async function testRNTesterAndroid(circleCIArtifacts) {
       'rntester.apk',
     );
 
+    const emulatorArch = exec('adb shell getprop ro.product.cpu.abi').trim();
     const rntesterAPKURL = argv.hermes
-      ? await circleCIArtifacts.artifactURLForHermesRNTesterAPK()
-      : await circleCIArtifacts.artifactURLForJSCRNTesterAPK();
+      ? await circleCIArtifacts.artifactURLForHermesRNTesterAPK(emulatorArch)
+      : await circleCIArtifacts.artifactURLForJSCRNTesterAPK(emulatorArch);
 
     console.info('Start Downloading APK');
     circleCIArtifacts.downloadArtifact(rntesterAPKURL, downloadPath);
