@@ -9,13 +9,22 @@
 
 'use strict';
 
-const {exec} = require('shelljs');
+const {exec, cp} = require('shelljs');
 const os = require('os');
 const {spawn} = require('node:child_process');
 const path = require('path');
 
 const circleCIArtifactsUtils = require('./circle-ci-artifacts-utils.js');
 
+const {
+  generateAndroidArtifacts,
+  generateiOSArtifacts,
+} = require('./release-utils');
+
+const {
+  downloadHermesSourceTarball,
+  expandHermesSourceTarball,
+} = require('../packages/react-native/scripts/hermes/hermes-utils.js');
 
 /*
  * Android related utils - leverages android tooling
@@ -122,7 +131,7 @@ function launchPackagerInSeparateWindow(folderPath) {
 /**
  * Checks if Metro is running and it kills it if that's the case
  */
- function checkPackagerRunning() {
+function checkPackagerRunning() {
   if (isPackagerRunning() === 'running') {
     exec(
       "lsof -i :8081 | grep LISTEN | /usr/bin/awk '{print $2}' | xargs kill",
@@ -139,13 +148,17 @@ function launchPackagerInSeparateWindow(folderPath) {
  * - @circleciToken a valid CircleCI Token.
  * - @branchName the branch of the name we want to use to fetch the artifacts.
  */
- async function setupCircleCIArtifacts(circleciToken, branchName) {
+async function setupCircleCIArtifacts(circleciToken, branchName) {
   if (!circleciToken) {
     return null;
   }
 
   const baseTmpPath = '/tmp/react-native-tmp';
-  await circleCIArtifactsUtils.initialize(circleciToken, baseTmpPath, branchName);
+  await circleCIArtifactsUtils.initialize(
+    circleciToken,
+    baseTmpPath,
+    branchName,
+  );
   return circleCIArtifactsUtils;
 }
 
@@ -225,7 +238,6 @@ function buildArtifactsLocally(
   return hermesPath;
 }
 
-
 /**
  * It prepares the artifacts required to run a new project created from the template
  *
@@ -240,7 +252,7 @@ function buildArtifactsLocally(
  * Returns:
  * - @hermesPath the path to hermes for iOS
  */
- async function prepareArtifacts(
+async function prepareArtifacts(
   circleCIArtifacts,
   mavenLocalPath,
   localNodeTGZPath,

@@ -16,26 +16,15 @@
  * and to make it more accessible for other devs to play around with.
  */
 
-const {exec, pushd, popd, pwd, cd, cp} = require('shelljs');
+const {exec, pushd, popd, pwd, cd} = require('shelljs');
 const updateTemplatePackage = require('./update-template-package');
 const yargs = require('yargs');
 const path = require('path');
 const fs = require('fs');
 
 const {
-  generateAndroidArtifacts,
-  generateiOSArtifacts,
-} = require('./release-utils');
-
-const {
-  downloadHermesSourceTarball,
-  expandHermesSourceTarball,
-} = require('react-native/scripts/hermes/hermes-utils.js');
-
-const {
   checkPackagerRunning,
   maybeLaunchAndroidEmulator,
-  isPackagerRunning,
   launchPackagerInSeparateWindow,
   setupCircleCIArtifacts,
   prepareArtifacts,
@@ -232,12 +221,15 @@ async function testRNTestProject(circleCIArtifacts) {
   // node pack does not creates a version of React Native with the right name on main.
   // Let's add some defensive programming checks:
   if (!fs.existsSync(localNodeTGZPath)) {
-    const tarfile = fs.readdirSync(reactNativePackagePath)
+    const tarfile = fs
+      .readdirSync(reactNativePackagePath)
       .find(name => name.startsWith('react-native-') && name.endsWith('.tgz'));
     if (!tarfile) {
       throw new Error("Couldn't find a zipped version of react-native");
     }
-    exec(`cp ${path.join(reactNativePackagePath, tarfile)} ${localNodeTGZPath}`);
+    exec(
+      `cp ${path.join(reactNativePackagePath, tarfile)} ${localNodeTGZPath}`,
+    );
   }
 
   pushd('/tmp/');
